@@ -188,6 +188,10 @@ class Game():
         if redvalue == blackvalue:
             for card in self.selected:
                 self.remove(card)
+        
+        for card in self.selected:
+            card.selected = False
+            
         self.selected = []
         return redvalue == blackvalue
 
