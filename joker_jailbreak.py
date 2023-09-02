@@ -5,9 +5,9 @@ main_dir = os.path.split(os.path.abspath(__file__))[0]
 data_dir = os.path.join(main_dir, "graphics")
 cardw, cardh = (80, 120)
 
-NUMBERS = {'ace': 1, '2': 2, '3': 3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10,
-           'jack': 11, 'queen': 12, 'king': 13}
+NUMBERS = {1: 'ace', 2 : '2', 3: '3', 4: '4', 5: '5', 6:'6', 7:'7',8:'8',9:'9',10:'10',11:'jack', 12:'queen', 13:'king'}
 SUITS = ['hearts', 'spades', 'diamonds', 'clubs']
+POSITION = {(0,0): 'corner', (0,1): 'side', (0,2):'corner', (1,0): 'side', (1,1):'center', (1,2):'side', (2,0):'corner', (2,1):'side', (2,2):'corner'}
 
 def load_image(name):
     fullname = os.path.join(data_dir, name)
@@ -26,7 +26,7 @@ def load_image(name):
 class Card(pygame.sprite.Sprite):
     def __init__(self, number, suit):
         pygame.sprite.Sprite.__init__(self)
-        self.upimage, self.rect = load_image(number + "_of_" + suit + '.png')
+        self.upimage, self.rect = load_image(NUMBERS[number] + "_of_" + suit + '.png')
         self.number = number
         self.suit = suit
         self.color = 'red' if suit in ['hearts', 'diamonds'] else 'black'
@@ -181,9 +181,9 @@ class Game():
         blackvalue = 0
         for card in self.selected:
             if card.color == 'red':
-                redvalue += NUMBERS[card.number]
+                redvalue += card.number
             elif card.color == 'black':
-                blackvalue += NUMBERS[card.number]
+                blackvalue += card.number
 
         if redvalue == blackvalue:
             for card in self.selected:
@@ -208,7 +208,56 @@ class Game():
             return 'S'
         return None
 
+    def hint(self):
+        red_cards = []
+        red_vals = {}
+        black_cards = []
+        black_vals = {}
+        for i,j in itertools.product(range(3), range(3)):
+            if len(self.tableau[i][j]) > 0:
+                card = self.tableau[i][j][-1]
+                if card != self.joker:
+                    if card.color == 'red':
+                        red_cards.append(card)
+                    else:
+                        black_cards.append(card)
+        nr = len(red_cards)
+        nb = len(black_cards)
+        for r in range(1, nr+1):
+            for key in itertools.combinations(red_cards, r):
+                sum = 0
+                for card in key:
+                    sum += card.number
+                red_vals[key] = sum
+        for b in range(1, nb+1):
+            for key in itertools.combinations(black_cards, b):
+                sum = 0
+                for card in key:
+                    sum += card.number
+                black_vals[key] = sum
+
+        valid_moves = []
+        for rkey in red_vals:
+            sum = red_vals[rkey]
+            for bkey in black_vals:
+                if black_vals[bkey] == sum:
+                    valid_moves.append(rkey + bkey)
         
+        if len(valid_moves) > 0:
+            return max(valid_moves, key=self.score)
+        else:
+            return None
+
+    def score(self, hand):
+        s = 0
+        for card in hand:
+            if POSITION[card.position] == 'corner':
+                s -= 1
+            elif POSITION[card.position] == 'side':
+                s += 1
+            elif POSITION[card.position] == 'center':
+                s += 2
+        return s
 def main():
     pygame.init()
     screen = pygame.display.set_mode((960, 740))
@@ -228,6 +277,9 @@ def main():
     reset_rect = reset_surf.get_rect(bottomright = (area.width - 10, area.height - 10))
     victory_surf = font.render("You win!", True, 'red')
     victory_rect = victory_surf.get_rect(center = (area.width/2, 60))
+    hint_surf = font.render("Hint", True, 'black')
+    hint_rect = hint_surf.get_rect(bottomleft = (10, area.height - 10))
+    background.blit(hint_surf, hint_rect)
     background.blit(reset_surf, reset_rect)
 
     def blit_game():
@@ -252,9 +304,14 @@ def main():
                 if stock_rect.collidepoint(event.pos):
                     game.draw()
                     game.tableau_groups[1][1].draw(screen)
+                    if len(game.stock) > 0:
+                        screen.blit(cardback, stock_rect)
+                    else:
+                        screen.blit(background, stock_rect, stock_rect)
                 elif reset_rect.collidepoint(event.pos):
                     background.fill((150, 190, 37))
                     background.blit(reset_surf, reset_rect)
+                    background.blit(hint_surf, hint_rect)
                     game.reset()
                     blit_game()
                 else:
@@ -272,6 +329,13 @@ def main():
                     background.blit(victory_surf, victory_rect)
                     game.joker.direction = game.win()
                     pygame.time.set_timer(53, millis=100, loops=20)
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_h or event.type == pygame.MOUSEBUTTONDOWN and hint_rect.collidepoint(event.pos):
+                hint = game.hint()
+                if hint == None:
+                    pygame.draw.rect(screen, 'red', stock_rect, width=3)
+                else:
+                    for card in hint:
+                        pygame.draw.rect(screen, 'red', card.rect, width=3)
         pygame.display.flip()
         clock.tick(60)
 
