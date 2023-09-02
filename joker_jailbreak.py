@@ -185,7 +185,7 @@ class Game():
             elif card.color == 'black':
                 blackvalue += NUMBERS[card.number]
 
-        if redvalue == blackvalue or True:
+        if redvalue == blackvalue:
             for card in self.selected:
                 self.remove(card)
         self.selected = []
