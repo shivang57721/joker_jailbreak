@@ -191,11 +191,13 @@ class Game():
         
         for card in self.selected:
             card.selected = False
-            
+
         self.selected = []
         return redvalue == blackvalue
 
     def win(self):
+        if len(self.tableau[1][1]) > 1:
+            return None
         if self.tableau[0][1] == []:
             return 'N'
         if self.tableau[1][0] == []:
